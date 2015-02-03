@@ -15,11 +15,12 @@ import play.api.libs.iteratee._
 import play.api.libs.json.JsValue
 import play.extras.iteratees._
 import play.api.libs.json.JsObject
+import actors.TwitterStreamer
 
 object Application extends Controller {
 
-  def index = Action {
-    Ok(views.html.index("Your new application is ready."))
+  def index = Action { implicit request =>
+    Ok(views.html.index("Tweets"))
   }
 
   val (iteratee, enumerator) = Concurrent.joined[Array[Byte]]
@@ -32,23 +33,27 @@ object Application extends Controller {
   
   jsonStream run loggingIteratee
   
-  def tweets = Action.async {
-    credentials.map {
-      case (consumerKey, requestToken) =>
-        WS.url("https://stream.twitter.com/1.1/statuses/filter.json")
-          .withRequestTimeout(-1)
-          .sign(OAuthCalculator(consumerKey, requestToken))
-          .withQueryString("track" -> "scala")
-          .get { response =>
-            Logger.info("Status:" + response.status)
-            iteratee
-          }.map(_ => Ok("Stream closed"))
-    } getOrElse {
-      Future {
-        InternalServerError("Twitter credentials missing")
-      }
-    }
+  def tweets = WebSocket.acceptWithActor[String, JsValue] {
+    request => out => TwitterStreamer.props(out)
   }
+  
+//  def tweets = Action.async {
+//    credentials.map {
+//      case (consumerKey, requestToken) =>
+//        WS.url("https://stream.twitter.com/1.1/statuses/filter.json")
+//          .withRequestTimeout(-1)
+//          .sign(OAuthCalculator(consumerKey, requestToken))
+//          .withQueryString("track" -> "scala")
+//          .get { response =>
+//            Logger.info("Status:" + response.status)
+//            iteratee
+//          }.map(_ => Ok("Stream closed"))
+//    } getOrElse {
+//      Future {
+//        InternalServerError("Twitter credentials missing")
+//      }
+//    }
+//  }
 
   def credentials: Option[(ConsumerKey, RequestToken)] = for {
     apiKey <- Play.current.configuration.getString("twitter.apiKey")
