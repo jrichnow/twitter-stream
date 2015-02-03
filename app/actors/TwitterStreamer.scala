@@ -21,7 +21,6 @@ class TwitterStreamer(out: ActorRef) extends Actor {
   def receive = {
     case "subscribe" =>
       Logger.info("Received subscription from client")
-      //      out ! Json.obj("text" -> "Hello World!")
       TwitterStreamer.subscribe(out)
   }
 }
