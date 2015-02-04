@@ -37,28 +37,7 @@ object Application extends Controller {
     request => out => TwitterStreamer.props(out)
   }
   
-//  def tweets = Action.async {
-//    credentials.map {
-//      case (consumerKey, requestToken) =>
-//        WS.url("https://stream.twitter.com/1.1/statuses/filter.json")
-//          .withRequestTimeout(-1)
-//          .sign(OAuthCalculator(consumerKey, requestToken))
-//          .withQueryString("track" -> "scala")
-//          .get { response =>
-//            Logger.info("Status:" + response.status)
-//            iteratee
-//          }.map(_ => Ok("Stream closed"))
-//    } getOrElse {
-//      Future {
-//        InternalServerError("Twitter credentials missing")
-//      }
-//    }
-//  }
-
-  def credentials: Option[(ConsumerKey, RequestToken)] = for {
-    apiKey <- Play.current.configuration.getString("twitter.apiKey")
-    apiSecret <- Play.current.configuration.getString("twitter.apiSecret")
-    token <- Play.current.configuration.getString("twitter.token")
-    tokenSecret <- Play.current.configuration.getString("twitter.tokenSecret")
-  } yield (ConsumerKey(apiKey, apiSecret), RequestToken(token, tokenSecret))
+  def replicateFeed = Action { implicit request =>
+    Ok.feed(TwitterStreamer.subscribeNode)
+  }
 }

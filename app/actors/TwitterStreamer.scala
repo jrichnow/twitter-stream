@@ -40,6 +40,16 @@ object TwitterStreamer {
     }
   }
 
+  def subscribeNode(): Enumerator[JsObject] = {
+    if (broadcastEnumerator == None) {
+      connect()
+    }
+
+    broadcastEnumerator.getOrElse {
+      Enumerator.empty[JsObject]
+    }
+  }
+
   def connect(): Unit = {
     credentials.map {
       case (consumerKey, requestToken) =>
@@ -50,12 +60,15 @@ object TwitterStreamer {
 
         broadcastEnumerator = Some(be)
 
-        val url = "https://stream.twitter.com/1.1/statuses/filter.json"
+        val maybeMasterNodeUrl = Option(System.getProperty("masterNodeUrl"))
+        val url = maybeMasterNodeUrl.getOrElse {
+          "https://stream.twitter.com/1.1/statuses/filter.json"
+        }
 
         WS.url(url)
           .withRequestTimeout(-1)
           .sign(OAuthCalculator(consumerKey, requestToken))
-          .withQueryString("track" -> "reactive")
+          .withQueryString("track" -> "scala")
           .get { response =>
             Logger.info("Status: " + response.status)
             iteratee
